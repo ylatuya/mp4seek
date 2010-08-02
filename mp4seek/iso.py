@@ -113,6 +113,8 @@ class Box(object):
         a = self._atom
         write_ulong(fobj, self.get_size())
         write_fcc(fobj, a.type)
+        if (a.extended_type):
+            fobj.write(a.extended_type)
 
 class FullBox(Box):
     def tabled_size(self, body_size, loop_size):

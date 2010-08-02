@@ -4,7 +4,7 @@ BUFFER_SIZE = 16*1024
 
 
 class Atom(object):
-    def __init__(self, size, type, offset, fobj, real_size=None):
+    def __init__(self, size, type, offset, fobj, real_size=None, extended_type=None):
         self.size = size
         self.type = type
         self.offset = offset
@@ -12,6 +12,7 @@ class Atom(object):
         self.real_size = real_size
         if self.real_size is None:
             self.real_size = size
+        self.extended_type = extended_type
 
         self._hsize = None
 
@@ -20,6 +21,8 @@ class Atom(object):
             head_size = 8
             if self.real_size == 1:
                 head_size += 8
+            if self.extended_type:
+                head_size += 16
             self._hsize = head_size
         return self._hsize
     head_size_ext = head_size
@@ -70,8 +73,8 @@ class Atom(object):
 
 
 class ContainerAtom(Atom):
-    def __init__(self, size, type, offset, fobj, real_size=None):
-        Atom.__init__(self, size, type, offset, fobj, real_size)
+    def __init__(self, size, type, offset, fobj, real_size=None, extended_type=None):
+        Atom.__init__(self, size, type, offset, fobj, real_size=real_size, extended_type=extended_type)
         self._children = None
         self._children_dict = None
 
@@ -95,8 +98,8 @@ class ContainerAtom(Atom):
 
 
 class FullAtom(Atom):
-    def __init__(self, size, type, offset, v, flags, fobj, real_size=None):
-        Atom.__init__(self, size, type, offset, fobj, real_size=real_size)
+    def __init__(self, size, type, offset, v, flags, fobj, real_size=None, extended_type=None):
+        Atom.__init__(self, size, type, offset, fobj, real_size=real_size, extended_type=extended_type)
         self.v = v
         self.flags = flags
 
