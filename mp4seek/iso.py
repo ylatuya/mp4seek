@@ -743,18 +743,20 @@ class stsd(FullBox):
         return cls(a, count=count, entries=entries)
 
 class stbl(ContainerBox):
-    _fields = ('stss', 'stsz', 'stz2', 'stco', 'co64', 'stts', 'ctts', 'stsc')
+    _fields = ('stss', 'stsz', 'stz2', 'stco', 'co64', 'stts', 'ctts', 'stsc', 'stsd')
 
     @classmethod
     @containerboxread
     def read(cls, a):
-        (astss, astsz, astz2, astco, aco64, astts, actts, astsc) = \
+        (astss, astsz, astz2, astco, aco64, astts, actts, astsc, stsd) = \
             select_children_atoms(a, ('stss', 0, 1), ('stsz', 0, 1),
                                   ('stz2', 0, 1), ('stco', 0, 1),
                                   ('co64', 0, 1), ('stts', 1, 1),
-                                  ('ctts', 0, 1), ('stsc', 1, 1))
+                                  ('ctts', 0, 1), ('stsc', 1, 1),
+                                  ('stsd', 0, 1))
         return cls(a, stss=astss, stsz=astsz, stz2=astz2, stco=astco,
-                   co64=aco64, stts=astts, ctts=actts, stsc=astsc)
+                   co64=aco64, stts=astts, ctts=actts, stsc=astsc,
+                   stsd=stsd)
 
 class minf(ContainerBox):
     _fields = ('stbl',)
