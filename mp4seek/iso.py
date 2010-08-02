@@ -413,14 +413,16 @@ class mvhd(FullBox):
         fobj.write(a.read_bytes(80))
 
 class tkhd(FullBox):
-    _fields = ('duration',)
+    _fields = ('duration', 'id')
 
     @classmethod
     @fullboxread
     def read(cls, a):
-        ver_skip(a, (16, 24))
+        ver_skip(a, (8, 16))
+        id = read_ulong(a.f)
+        a.skip(4)
         d = ver_read(a, (read_ulong, read_ulonglong))
-        return cls(a, duration=d)
+        return cls(a, duration=d, id=id)
 
     def write(self, fobj):
         self.write_head(fobj)
