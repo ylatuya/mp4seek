@@ -39,6 +39,8 @@ def read_table(f, row_spec, entries, spec_prefix='>'):
                         the whole table
     @type  spec_prefix: str
     """
+    if entries == 0:
+        return []
     row_bytes = struct.calcsize('%s%s' % (spec_prefix, row_spec))
     data = f.read(row_bytes * entries)
     try:
@@ -569,7 +571,6 @@ class stsc(FullBox):
     def read(cls, a):
         entries = read_ulong(a.f)
         t = read_table(a.f, 'LLL', entries)
-
         return cls(a, table=t)
 
     def get_size(self):
