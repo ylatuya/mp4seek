@@ -675,6 +675,73 @@ class stz2(FullBox):
         else:
             raise FormatError()
 
+class btrt(Box):
+    _fields = ('bufferSize', 'maxBitrate', 'avgBitrate')
+
+    @classmethod
+    def read(cls, a):
+        a.seek_to_data()
+        bufferSize = atoms.read_ulong(a.f)
+        maxBitrate = atoms.read_ulong(a.f)
+        avgBitrate = atoms.read_ulong(a.f)
+        return cls(a, bufferSize=bufferSize, maxBitrate=maxBitrate,
+                   avgBitrate=avgBitrate)
+
+class avcC(Box):
+    _fields = ('version', 'profile', 'level', 'data')
+
+    @classmethod
+    def read(cls, a):
+        a.seek_to_data()
+        data = a.read_bytes(a.size - 8)
+        version = data[0]
+        profile = data[1]
+        level = data[3]
+        return cls(a, version=version, profile=profile, level=level, data=data)
+
+class avc1(Box):
+    # TODO: base class for SampleEntry, VideoSampleEntry...
+    _fields = ('index', 'width', 'height', 'comp', 'extra')
+
+    @classmethod
+    def read(cls, a):
+        a.seek_to_data()
+        a.skip(6)
+        idx = atoms.read_ushort(a.f)
+        a.skip(4 * 4)
+        width = atoms.read_ushort(a.f)
+        height = atoms.read_ushort(a.f)
+        hr = a.read_bytes(4)
+        vr = a.read_bytes(4)
+        reserved = atoms.read_ulong(a.f)
+        fc = atoms.read_ushort(a.f)
+        comp = a.read_bytes(32)
+        depth = atoms.read_ushort(a.f)
+        minusone = atoms.read_short(a.f)
+        if (minusone != -1):
+            raise FormatError()
+        # optional boxes follow
+        extra = list(atoms.read_atoms(a.f, a.size - 86))
+        a.seek_to_data()
+        a.skip(86)
+        extra = map(lambda a: maybe_build_atoms(a.type, [a])[0], extra)
+        return cls(a, index=idx, width=width, height=height, comp=comp, extra=extra)
+
+class stsd(FullBox):
+    _fields = ('count','entries')
+
+    @classmethod
+    @fullboxread
+    def read(cls, a):
+        count = read_ulong(a.f)
+        entries = []
+        while count > 0:
+            b = atoms.read_atom(a.f)
+            entries.append(b)
+            count = count - 1
+        entries = map(lambda a: maybe_build_atoms(a.type, [a])[0], entries)
+        return cls(a, count=count, entries=entries)
+
 class stbl(ContainerBox):
     _fields = ('stss', 'stsz', 'stz2', 'stco', 'co64', 'stts', 'ctts', 'stsc')
 
@@ -737,6 +804,37 @@ class ftyp(Box):
         brand = read_fcc(a.f)
         v = read_ulong(a.f)
         return cls(a, brand=brand, version=v)
+
+class tfhd(FullBox):
+    _fields = ('track_id', )
+
+    @classmethod
+    @fullboxread
+    def read(cls, a):
+        track_id = read_ulong(a.f)
+        return cls(a, track_id=track_id)
+
+class traf(ContainerBox):
+    _fields = ('tfhd', 'trun', 'sdtp', 'uuid')
+
+    @classmethod
+    @containerboxread
+    def read(cls, a):
+        (tfhd, trun, sdtp) = select_children_atoms(a, ('tfhd', 1, 1),
+                                                   ('trun', 1, 1),
+                                                   ('sdtp', 0, 1))
+        uuid = []
+        return cls(a, tfhd=tfhd, trun=trun, sdtp=sdtp, uuid=uuid)
+
+class moof(ContainerBox):
+    _fields = ('mfhd', 'traf')
+
+    @classmethod
+    @containerboxread
+    def read(cls, a):
+        (mfhd, traf) = select_children_atoms(a, ('mfhd', 1, 1),
+                                             ('traf', 1, 1))
+        return cls(a, mfhd=mfhd, traf=traf)
 
 def read_iso_file(fobj):
     fobj.seek(0)
