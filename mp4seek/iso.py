@@ -131,6 +131,10 @@ class FullBox(Box):
         write_ulong(fobj, (a.v & 0xff) << 24 | (a.flags & 0xffffff))
 
 class ContainerBox(Box):
+    def __init__(self, *a, **kw):
+        Box.__init__(self, *a, **kw)
+        self._extra_children = []
+
     def get_size(self):
         # print '[>] getting size: %r' % self._atom
         fields = getattr(self, '_fields', [])
@@ -146,6 +150,7 @@ class ContainerBox(Box):
                         v = [v]
             # print 'size for %r = %r' % (sum([a.get_size() for a in v]), v)
             size += sum([a.get_size() for a in v])
+        size += sum([a.get_size() for a in self._extra_children])
         # print '[<] getting size: %r = %r' % (self._atom, size)
         return size
 
@@ -169,6 +174,7 @@ class ContainerBox(Box):
             return a.get_offset()
 
         to_write.sort(key=_get_offset)
+        to_write.extend(self._extra_children)
 
         # print '[  ] going to write:', \
         #     ([(isinstance(a, Box) and a._atom.type or a.type)
@@ -176,6 +182,9 @@ class ContainerBox(Box):
         for ca in to_write:
             # print '[cb] writing:', ca
             ca.write(fobj)
+
+    def add_extra_children(self, al):
+        self._extra_children.extend(al)
 
 def fullboxread(f):
     def _with_full_atom_read_wrapper(cls, a):
