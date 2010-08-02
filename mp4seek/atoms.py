@@ -132,6 +132,15 @@ def read_bytes(fobj, bytes):
                            (bytes, len(data)))
     return data
 
+def read_uchar(fobj):
+    return struct.unpack('>B', read_bytes(fobj, 1))[0]
+
+def read_short(fobj):
+    return struct.unpack('>h', read_bytes(fobj, 2))[0]
+
+def read_ushort(fobj):
+    return struct.unpack('>H', read_bytes(fobj, 2))[0]
+
 def read_ulong(fobj):
     return struct.unpack('>L', read_bytes(fobj, 4))[0]
 

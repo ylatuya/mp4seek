@@ -5,6 +5,9 @@ import atoms
 from atoms import read_fcc, read_ulong, read_ulonglong
 
 
+def write_uchar(fobj, n):
+    fobj.write(struct.pack('>B', n))
+
 def write_ulong(fobj, n):
     fobj.write(struct.pack('>L', n))
 
