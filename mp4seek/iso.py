@@ -316,6 +316,66 @@ def get_chunk_offset(stco64, chunk_num):
     # 1-based indices!
     return stco64[chunk_num - 1]
 
+class uuid(FullBox):
+    _extended_type = None
+    @classmethod
+    def read(cls, a):
+        # TODO implement a lookup of child classes based on _extended_type?
+        raise Exception("not implemented yet")
+
+class uuid_sscurrent(uuid):
+    _fields = ('timestamp', 'duration')
+    _extended_type = "\x6d\x1d\x9b\x05\x42\xd5\x44\xe6\x80\xe2\x14\x1d\xaf\xf7\x57\xb2"
+
+    def write(self, fobj):
+        self.write_head(fobj)
+        write_ulonglong(fobj, self.timestamp)
+        write_ulonglong(fobj, self.duration)
+
+    def get_size(self):
+        size = self._atom.head_size_ext()
+        size += 2 * 8
+        return size
+
+    @classmethod
+    def read(cls, a):
+        raise Exception("not implemented yet")
+
+    @classmethod
+    def make(cls, timestamp, duration):
+        a = atoms.FullAtom(0, "uuid", 0, 1, 0, None, extended_type=cls._extended_type)
+        s = cls(a)
+        s.timestamp = timestamp
+        s.duration = duration
+        return s
+
+class uuid_ssnext(FullBox):
+    _fields = ('entries')
+    _extended_type = "\xd4\x80\x7e\xf2\xca\x39\x46\x95\x8e\x54\x26\xcb\x9e\x46\xa7\x9f"
+
+    def write(self, fobj):
+        self.write_head(fobj)
+        write_uchar(fobj, len(self.entries))
+        for ts, duration in self.entries:
+            write_ulonglong(fobj, ts)
+            write_ulonglong(fobj, duration)
+
+    def get_size(self):
+        size = self._atom.head_size_ext()
+        size += 1 + (2 * 8) * len(self.entries)
+        return size
+
+    @classmethod
+    def read(cls, a):
+        raise Exception("not implemented yet")
+
+    @classmethod
+    def make(cls, entries):
+        a = atoms.FullAtom(0, "uuid", 0, 1, 0, None, extended_type=cls._extended_type)
+        s = cls(a)
+        s.entries = entries
+        return s
+
 class mvhd(FullBox):
     _fields = (
         # 'creation_time', 'modification_time',
