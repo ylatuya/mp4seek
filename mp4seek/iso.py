@@ -688,6 +688,87 @@ class btrt(Box):
         return cls(a, bufferSize=bufferSize, maxBitrate=maxBitrate,
                    avgBitrate=avgBitrate)
 
+# from gst and mp4split, which all seem to be from ffmpeg
+def read_desc_len(f):
+    bytes = 0
+    len = 0
+    while True:
+        c = atoms.read_uchar(f)
+        len <<= 7
+        len |= c & 0x7f
+        bytes += 1
+        if (bytes == 4):
+            break
+        if not (c & 0x80):
+            break
+    return len
+
+MP4_ELEMENTARY_STREAM_DESCRIPTOR_TAG = 3
+MP4_DECODER_CONFIG_DESCRIPTOR_TAG = 4
+MP4_DECODER_SPECIFIC_DESCRIPTOR_TAG = 5
+
+class esds(FullBox):
+    _fields = ('object_type_id', 'maxBitrate', 'avgBitrate', 'data')
+
+    @classmethod
+    @fullboxread
+    def read(cls, a):
+        # from mp4split
+        esdesc = atoms.read_uchar(a.f)
+        if esdesc == MP4_ELEMENTARY_STREAM_DESCRIPTOR_TAG:
+            len = read_desc_len(a.f)
+            stream_id = atoms.read_ushort(a.f)
+            prio = atoms.read_uchar(a.f)
+        else:
+            stream_id = atoms.read_ushort(a.f)
+
+        tag = atoms.read_uchar(a.f)
+        len = read_desc_len(a.f)
+        if tag != MP4_DECODER_CONFIG_DESCRIPTOR_TAG:
+            raise FormatError("can't parse esds")
+        object_type_id = atoms.read_uchar(a.f)
+        stream_type = atoms.read_uchar(a.f)
+        buffer_size_db = a.read_bytes(3)
+        maxBitrate = atoms.read_ulong(a.f)
+        avgBitrate = atoms.read_ulong(a.f)
+
+        tag = atoms.read_uchar(a.f)
+        len = read_desc_len(a.f)
+        if tag != MP4_DECODER_SPECIFIC_DESCRIPTOR_TAG:
+            raise FormatError("can't parse esd")
+        data = a.read_bytes(len)
+
+        return cls(a, object_type_id=object_type_id,
+                   maxBitrate=maxBitrate, avgBitrate=avgBitrate, data=data)
+
+class mp4a(Box):
+    # TODO: base class for SampleEntry, AudioSampleEntry...
+    _fields = ('index', 'channelcount', 'samplesize', 'sampleratehi', 'sampleratelo', 'extra')
+
+    @classmethod
+    def read(cls, a):
+        a.seek_to_data()
+        a.skip(6) # reserved
+        idx = atoms.read_ushort(a.f)
+        version = atoms.read_ushort(a.f)
+        a.skip(4 + 2) # reserved
+        channelcount = atoms.read_ushort(a.f)
+        if channelcount == 3:
+            channelcount = 6 # from mp4split
+        samplesize = atoms.read_ushort(a.f)
+        a.skip(4)
+        sampleratehi = atoms.read_ushort(a.f)
+        sampleratelo = atoms.read_ushort(a.f)
+        # FIXME: parse version != 0 samples_per_packet etc..
+        # optional boxes follow
+        extra = list(atoms.read_atoms(a.f, a.size - 36))
+        a.seek_to_data()
+        a.skip(36)
+        extra = map(lambda a: maybe_build_atoms(a.type, [a])[0], extra)
+        return cls(a, index=idx, channelcount=channelcount, samplesize=samplesize,
+                   sampleratehi=sampleratehi, sampleratelo=sampleratelo,
+                   extra=extra)
+
 class avcC(Box):
     _fields = ('version', 'profile', 'level', 'data')
 
