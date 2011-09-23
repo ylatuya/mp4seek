@@ -433,11 +433,17 @@ class tkhd(FullBox):
         a.skip(a.head_size_ext())
 
         if a.v == 0:
-            fobj.write(a.read_bytes(16))
+            fobj.write(a.read_bytes(8))
+            write_ulong(fobj, self.id)
+            a.skip(4)
+            fobj.write(a.read_bytes(4))
             write_ulong(fobj, self.duration)
             a.skip(4)
         elif a.v == 1:
-            fobj.write(a.read_bytes(24))
+            fobj.write(a.read_bytes(16))
+            write_ulong(fobj, self.id)
+            a.skip(4)
+            fobj.write(a.read_bytes(4))
             write_ulonglong(fobj, self.duration)
             a.skip(8)
         else:
